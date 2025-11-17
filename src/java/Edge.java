@@ -1,6 +1,3 @@
-
-
-// Edge class representing a connection between nodes
 class Edge {
     private Node source;
     private Node target;

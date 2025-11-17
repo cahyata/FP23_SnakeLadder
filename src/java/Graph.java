@@ -1,41 +1,40 @@
 
+
 import java.util.ArrayList;
 
-// Graph class managing nodes and edges
 class Graph {
     private ArrayList<Node> nodes;
     private ArrayList<Edge> edges;
     private int[][] adjacencyMatrix;
     private String[] label;
 
-    public Graph(int[][] adjacencyMatrix) {
+    public Graph(int[][] adjacencyMatrix, String[] label) {
         this.adjacencyMatrix = adjacencyMatrix;
         this.nodes = new ArrayList<>();
         this.edges = new ArrayList<>();
-        initializeGraph();
-    }
-
-    public Graph(int[][] adjacencyMatrix, String[] l) {
-        this.adjacencyMatrix = adjacencyMatrix;
-        this.nodes = new ArrayList<>();
-        this.edges = new ArrayList<>();
-        this.label = l;
+        this.label = label;
         initializeGraph();
     }
 
     private void initializeGraph() {
         int n = adjacencyMatrix.length;
 
-        // Create nodes in circular layout
-        int centerX = 400;
-        int centerY = 300;
-        int radius = 200;
+        // Posisi manual untuk setiap node sesuai gambar
+        int[][] positions = {
+                {150, 250},   // MRS (0)
+                {300, 150},   // SUB (1)
+                {350, 350},   // CAK (2)
+                {250, 500},   // BDG (3)
+                {500, 250},   // DPS (4)
+                {700, 200},   // FOG (5)
+                {650, 350},   // DHS (6)
+                {550, 500},   // MLG (7)
+                {850, 400},   // BTM (8)
+                {750, 550}    // PDG (9)
+        };
 
         for (int i = 0; i < n; i++) {
-            double angle = 2 * Math.PI * i / n;
-            int x = centerX + (int)(radius * Math.cos(angle));
-            int y = centerY + (int)(radius * Math.sin(angle));
-            nodes.add(new Node(i, x, y));
+            nodes.add(new Node(i, positions[i][0], positions[i][1]));
         }
 
         // Create edges from adjacency matrix

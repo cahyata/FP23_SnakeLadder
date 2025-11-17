@@ -1,21 +1,17 @@
-
-
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 
-// Panel for drawing the graph
 class GraphPanel extends JPanel {
     private Graph graph;
     private Node draggedNode = null;
 
     public GraphPanel(Graph graph) {
         this.graph = graph;
-        setPreferredSize(new Dimension(800, 600));
+        setPreferredSize(new Dimension(1000, 700));
         setBackground(Color.WHITE);
 
-        // Mouse listener for dragging nodes
         MouseAdapter mouseHandler = new MouseAdapter() {
             private int offsetX, offsetY;
 
@@ -57,7 +53,7 @@ class GraphPanel extends JPanel {
         g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
         // Draw edges
-        g2d.setColor(Color.GRAY);
+        g2d.setColor(Color.BLACK);
         g2d.setStroke(new BasicStroke(2));
 
         for (Edge edge : graph.getEdges()) {
@@ -73,14 +69,15 @@ class GraphPanel extends JPanel {
             // Draw weight
             int midX = (source.getX() + target.getX()) / 2;
             int midY = (source.getY() + target.getY()) / 2;
-            g2d.setColor(Color.RED);
-            g2d.drawString(String.valueOf(edge.getWeight()), midX, midY);
-            g2d.setColor(Color.GRAY);
+            g2d.setColor(Color.BLACK);
+            g2d.setFont(new Font("Arial", Font.BOLD, 14));
+            g2d.drawString(String.valueOf(edge.getWeight()), midX + 5, midY - 5);
+            g2d.setColor(Color.BLACK);
         }
 
         // Draw nodes
         for (Node node : graph.getNodes()) {
-            g2d.setColor(new Color(100, 150, 255));
+            g2d.setColor(Color.WHITE);
             g2d.fillOval(node.getX() - node.getRadius(),
                     node.getY() - node.getRadius(),
                     node.getRadius() * 2,
@@ -94,14 +91,9 @@ class GraphPanel extends JPanel {
                     node.getRadius() * 2);
 
             // Draw node label
-            g2d.setColor(Color.WHITE);
-            g2d.setFont(new Font("Arial", Font.BOLD, 16));
-            String label;
-            if (graph.getLabel() != null) {
-                label = graph.getLabel()[node.getId()];
-            } else {
-                label = String.valueOf(node.getId());
-            }
+            g2d.setColor(Color.BLACK);
+            g2d.setFont(new Font("Arial", Font.BOLD, 14));
+            String label = graph.getLabel()[node.getId()];
             FontMetrics fm = g2d.getFontMetrics();
             int labelX = node.getX() - fm.stringWidth(label) / 2;
             int labelY = node.getY() + fm.getAscent() / 2;
@@ -113,9 +105,8 @@ class GraphPanel extends JPanel {
         double angle = Math.atan2(y2 - y1, x2 - x1);
         int arrowSize = 10;
 
-        // Calculate arrow position near target node
-        int arrowX = x2 - (int)(25 * Math.cos(angle));
-        int arrowY = y2 - (int)(25 * Math.sin(angle));
+        int arrowX = x2 - (int)(30 * Math.cos(angle));
+        int arrowY = y2 - (int)(30 * Math.sin(angle));
 
         int[] xPoints = {
                 arrowX,

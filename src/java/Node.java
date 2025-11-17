@@ -1,9 +1,7 @@
-
-// Node class representing a vertex in the graph
 class Node {
     private int id;
     private int x, y;
-    private static final int RADIUS = 25;
+    private static final int RADIUS = 30;
 
     public Node(int id, int x, int y) {
         this.id = id;
