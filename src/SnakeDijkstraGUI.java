@@ -5,6 +5,7 @@ import javax.swing.border.MatteBorder;
 import java.awt.*;
 import java.awt.geom.Point2D;
 import java.util.*;
+import java.util.List;
 import java.util.concurrent.ConcurrentLinkedDeque;
 
 public class SnakeDijkstraGUI extends JFrame {
@@ -28,8 +29,9 @@ public class SnakeDijkstraGUI extends JFrame {
     private static class GradientPanel extends JPanel {
         private final Color centerColor;
         private final Color edgeColor;
-        private boolean hasP1 = false;
-        private boolean hasP2 = false;
+
+        // Menyimpan daftar ID pemain yang ada di kotak ini (cth: [1, 3])
+        private List<Integer> playersHere = new ArrayList<>();
 
         public GradientPanel(Color centerColor, Color edgeColor) {
             this.centerColor = centerColor;
@@ -37,9 +39,9 @@ public class SnakeDijkstraGUI extends JFrame {
             setOpaque(false);
         }
 
-        public void setPlayerPresence(boolean p1, boolean p2) {
-            this.hasP1 = p1;
-            this.hasP2 = p2;
+        public void setPlayersHere(List<Integer> players) {
+            this.playersHere.clear();
+            this.playersHere.addAll(players);
             repaint();
         }
 
@@ -61,26 +63,56 @@ public class SnakeDijkstraGUI extends JFrame {
             g2d.setPaint(p);
             g2d.fillRect(0, 0, w, h);
 
-            // Logic Bidak Pemain
+            // --- Logic Menggambar Banyak Bidak ---
+            // Kita bagi kotak menjadi 4 kuadran agar muat 4 pemain
             int pawnSize = w / 3;
-            int xP1 = (hasP2) ? (w / 2) - pawnSize - 4 : (w - pawnSize) / 2;
-            int xP2 = (hasP1) ? (w / 2) + 4 : (w - pawnSize) / 2;
-            int yPos = (h / 2) - (pawnSize / 2) + 5;
+            int padding = 4;
 
-            if (hasP1) drawPawn(g2d, xP1, yPos, pawnSize, Color.decode("#FF5252"), "P1");
-            if (hasP2) drawPawn(g2d, xP2, yPos, pawnSize, Color.decode("#448AFF"), "P2");
+            // Koordinat Kuadran
+            // P1: Kiri Atas
+            int x1 = (w / 2) - pawnSize - padding;
+            int y1 = (h / 2) - pawnSize - padding + 10;
+
+            // P2: Kanan Atas
+            int x2 = (w / 2) + padding;
+            int y2 = (h / 2) - pawnSize - padding + 10;
+
+            // P3: Kiri Bawah
+            int x3 = (w / 2) - pawnSize - padding;
+            int y3 = (h / 2) + padding + 5;
+
+            // P4: Kanan Bawah
+            int x4 = (w / 2) + padding;
+            int y4 = (h / 2) + padding + 5;
+
+            for (int playerId : playersHere) {
+                switch (playerId) {
+                    case 1: // Merah
+                        drawPawn(g2d, x1, y1, pawnSize, Color.decode("#FF5252"), "P1");
+                        break;
+                    case 2: // Biru
+                        drawPawn(g2d, x2, y2, pawnSize, Color.decode("#448AFF"), "P2");
+                        break;
+                    case 3: // Hijau
+                        drawPawn(g2d, x3, y3, pawnSize, Color.decode("#69F0AE"), "P3");
+                        break;
+                    case 4: // Oranye
+                        drawPawn(g2d, x4, y4, pawnSize, Color.decode("#FFAB40"), "P4");
+                        break;
+                }
+            }
         }
 
         private void drawPawn(Graphics2D g2, int x, int y, int size, Color color, String label) {
             g2.setColor(new Color(0, 0, 0, 60)); // Shadow
-            g2.fillOval(x + 3, y + 3, size, size);
+            g2.fillOval(x + 2, y + 2, size, size);
             g2.setColor(color); // Body
             g2.fillOval(x, y, size, size);
             g2.setColor(Color.WHITE); // Border
-            g2.setStroke(new BasicStroke(2.5f));
+            g2.setStroke(new BasicStroke(2f));
             g2.drawOval(x, y, size, size);
 
-            g2.setFont(new Font("Segoe UI", Font.BOLD, 11));
+            g2.setFont(new Font("Segoe UI", Font.BOLD, 10));
             g2.setColor(Color.WHITE);
             FontMetrics fm = g2.getFontMetrics();
             int tx = x + (size - fm.stringWidth(label)) / 2;
@@ -97,14 +129,13 @@ public class SnakeDijkstraGUI extends JFrame {
     private Node[][] logicBoard = new Node[SIZE][SIZE];
     private Map<Integer, GradientPanel> panelMap = new HashMap<>();
 
-    // Struktur Data Game
-    private Stack<Integer> p1Stack = new Stack<>();
-    private Stack<Integer> p2Stack = new Stack<>();
+    // --- Struktur Data Dinamis (Mendukung N Player) ---
+    private int playerCount = 2; // Default
+    private List<Stack<Integer>> allPlayerStacks = new ArrayList<>(); // List of Stacks
     private Deque<Integer> turnQueue = new ArrayDeque<>();
 
     // Fitur Link/Tangga Acak
     private Map<Integer, Integer> shortcuts = new HashMap<>();
-
     private Random random = new Random();
 
     // Layout Components
@@ -124,9 +155,17 @@ public class SnakeDijkstraGUI extends JFrame {
     private final Color sidebarColor = Color.decode("#2C3E50");
     private final Color accentColor  = Color.decode("#E67E22");
 
+    // Warna Teks Player untuk Status Label
+    private final Color[] playerTextColors = {
+            Color.decode("#FF5252"), // P1 Red
+            Color.decode("#448AFF"), // P2 Blue
+            Color.decode("#69F0AE"), // P3 Green
+            Color.decode("#FFAB40")  // P4 Orange
+    };
+
     public SnakeDijkstraGUI() {
-        setTitle("Snake Game: Previous Position Prime Logic");
-        setSize(1100, 850);
+        setTitle("Snake Game: Multi-Player & Prime Logic");
+        setSize(1150, 900);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
         cardLayout = new CardLayout();
@@ -161,9 +200,6 @@ public class SnakeDijkstraGUI extends JFrame {
             Graphics2D g2 = (Graphics2D) g;
             g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
-            // Gambar Garis Link
-            // Karena syaratnya tergantung posisi player (dinamis),
-            // Kita gambar semua link sebagai "Potential Link" (warna Ungu/Emas)
             for (Map.Entry<Integer, Integer> entry : shortcuts.entrySet()) {
                 int startId = entry.getKey();
                 int endId = entry.getValue();
@@ -175,12 +211,10 @@ public class SnakeDijkstraGUI extends JFrame {
                     Point p1 = SwingUtilities.convertPoint(startPanel, startPanel.getWidth()/2, startPanel.getHeight()/2, this);
                     Point p2 = SwingUtilities.convertPoint(endPanel, endPanel.getWidth()/2, endPanel.getHeight()/2, this);
 
-                    // Style Garis "Magic Link"
-                    g2.setColor(new Color(138, 43, 226, 180)); // BlueViolet semi-transparent
+                    g2.setColor(new Color(138, 43, 226, 150)); // Violet transparan
                     g2.setStroke(new BasicStroke(3f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
                     g2.drawLine(p1.x, p1.y, p2.x, p2.y);
 
-                    // Lingkaran ujung
                     int r = 5;
                     g2.setColor(Color.MAGENTA);
                     g2.fillOval(p1.x - r, p1.y - r, r*2, r*2);
@@ -208,11 +242,28 @@ public class SnakeDijkstraGUI extends JFrame {
         startButton.setPreferredSize(new Dimension(250, 60));
 
         startButton.addActionListener(e -> {
-            initGameData();
-            updatePlayerGraphics();
-            updateInfoPanel();
-            cardLayout.show(mainContainer, "GAME");
-            boardPanel.repaint();
+            // 1. TANYA JUMLAH PEMAIN
+            String[] options = {"2 Players", "3 Players", "4 Players"};
+            int choice = JOptionPane.showOptionDialog(this,
+                    "Pilih Jumlah Pemain:",
+                    "Setup Game",
+                    JOptionPane.DEFAULT_OPTION,
+                    JOptionPane.QUESTION_MESSAGE,
+                    null, options, options[0]);
+
+            if (choice != -1) {
+                // choice 0 -> 2 pemain, 1 -> 3 pemain, dst.
+                playerCount = choice + 2;
+
+                // 2. Init Data
+                initGameData();
+                updatePlayerGraphics();
+                updateInfoPanel();
+
+                // 3. Pindah Layar
+                cardLayout.show(mainContainer, "GAME");
+                boardPanel.repaint();
+            }
         });
 
         GridBagConstraints gbc = new GridBagConstraints();
@@ -232,7 +283,7 @@ public class SnakeDijkstraGUI extends JFrame {
     private JPanel createGamePanel() {
         JPanel panel = new JPanel(new BorderLayout());
 
-        // A. Papan Permainan (Custom Drawing Panel)
+        // A. Papan Permainan
         boardPanel = new BoardDrawingPanel(new GridLayout(SIZE, SIZE));
         boardPanel.setBorder(new LineBorder(sidebarColor, 5));
         initializeLogicBoard();
@@ -247,7 +298,7 @@ public class SnakeDijkstraGUI extends JFrame {
 
         statusLabel = new JLabel("PLAYER 1 TURN");
         statusLabel.setFont(new Font("Segoe UI", Font.BOLD, 22));
-        statusLabel.setForeground(Color.WHITE);
+        statusLabel.setForeground(playerTextColors[0]);
         statusLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
         diceLabel = new JLabel("Roll the dice!");
@@ -305,12 +356,24 @@ public class SnakeDijkstraGUI extends JFrame {
     // --- GAME DATA & LOGIC ---
 
     private void initGameData() {
-        p1Stack.clear(); p1Stack.push(1);
-        p2Stack.clear(); p2Stack.push(1);
+        // Reset Stacks untuk N pemain
+        allPlayerStacks.clear();
+        for (int i = 0; i < playerCount; i++) {
+            Stack<Integer> s = new Stack<>();
+            s.push(1); // Semua mulai di 1
+            allPlayerStacks.add(s);
+        }
+
+        // Reset Queue Giliran
         turnQueue.clear();
-        turnQueue.add(1);
-        turnQueue.add(2);
+        for (int i = 1; i <= playerCount; i++) {
+            turnQueue.add(i);
+        }
+
         rollButton.setEnabled(true);
+        statusLabel.setText("PLAYER 1 TURN");
+        statusLabel.setForeground(playerTextColors[0]);
+
         generateRandomLinks();
     }
 
@@ -324,7 +387,6 @@ public class SnakeDijkstraGUI extends JFrame {
                 shortcuts.put(start, end);
             }
         }
-        System.out.println("Links Generated: " + shortcuts);
     }
 
     private void initializeLogicBoard() {
@@ -375,14 +437,13 @@ public class SnakeDijkstraGUI extends JFrame {
 
         int currentPlayer = turnQueue.pollFirst();
 
-        // 1. Ambil Posisi SEBELUM kocok dadu (Previous Position)
-        Stack<Integer> currentStack = (currentPlayer == 1) ? p1Stack : p2Stack;
+        // 1. Ambil Stack Pemain (Index = currentPlayer - 1)
+        Stack<Integer> currentStack = allPlayerStacks.get(currentPlayer - 1);
         int previousPos = currentStack.peek();
 
-        // Cek apakah posisi awal adalah Prima (Untuk syarat Link nanti)
         boolean startIsPrime = isPrime(previousPos);
 
-        // 2. Roll Dice Logic
+        // 2. Roll Dice
         double chance = random.nextDouble();
         boolean isGreen = chance < 0.7;
         int diceValue = random.nextInt(6) + 1;
@@ -394,37 +455,32 @@ public class SnakeDijkstraGUI extends JFrame {
         diceLabel.setText("<html><center><span style='font-size:12px; color:white;'>Hasil: " + direction + "</span><br>" +
                 "<span style='font-size:24px; color:" + hexColor + "; font-weight:bold;'>" + diceValue + "</span></center></html>");
 
-        // 3. Kalkulasi Posisi Baru
+        // 3. Kalkulasi Posisi
         int newPos = calculateNewPosition(previousPos, steps);
 
         String logMsg = "P" + currentPlayer + ": " + previousPos + " -> " + newPos;
 
-        // 4. LOGIKA LINK & SYARAT BILANGAN PRIMA (FIXED)
+        // 4. LOGIKA LINK
         if (shortcuts.containsKey(newPos)) {
-            // Kita cek 'previousPos' (posisi awal pemain)
             if (startIsPrime) {
-                // Syarat Terpenuhi
                 int jumpDest = shortcuts.get(newPos);
                 logMsg += " (ACTIVE LINK -> " + jumpDest + ")";
                 JOptionPane.showMessageDialog(this,
-                        "Shortest Path Activated!\nAnda berangkat dari angka PRIMA (" + previousPos + ").\nLink aktif menuju " + jumpDest);
+                        "PRIME JUMP!\nBerangkat dari " + previousPos + " (Prima).\nLink aktif ke " + jumpDest);
                 newPos = jumpDest;
             } else {
-                // Syarat Gagal
-                logMsg += " (Link Locked: Start not Prime)";
+                logMsg += " (Link Locked)";
                 JOptionPane.showMessageDialog(this,
-                        "Link ditemukan di " + newPos + ".\nTapi terkunci karena anda berangkat dari " + previousPos + " (Bukan Prima).",
+                        "Link ditemukan di " + newPos + ".\nTapi terkunci karena berangkat dari " + previousPos + " (Bukan Prima).",
                         "Link Locked", JOptionPane.WARNING_MESSAGE);
             }
         }
 
-        // Push ke Stack
         currentStack.push(newPos);
 
         // Update Visual
         historyArea.append(logMsg + "\n");
         updatePlayerGraphics();
-        updateInfoPanel();
 
         // 5. Cek Menang
         if (newPos == 64) {
@@ -435,7 +491,7 @@ public class SnakeDijkstraGUI extends JFrame {
             return;
         }
 
-        // 6. Aturan Kelipatan 5 (Double Turn)
+        // 6. Aturan Double Turn
         if (newPos % 5 == 0 && newPos != 1) {
             JOptionPane.showMessageDialog(this, "Kelipatan 5! Double Turn untuk P" + currentPlayer);
             turnQueue.addFirst(currentPlayer);
@@ -443,9 +499,12 @@ public class SnakeDijkstraGUI extends JFrame {
             turnQueue.addLast(currentPlayer);
         }
 
+        // Update Status Giliran Berikutnya
         int nextPlayer = turnQueue.peekFirst();
         statusLabel.setText("PLAYER " + nextPlayer + " TURN");
-        statusLabel.setForeground(nextPlayer == 1 ? Color.decode("#FF5252") : Color.decode("#448AFF"));
+        // Pakai warna sesuai player (Safe index check)
+        int colorIdx = (nextPlayer - 1) % playerTextColors.length;
+        statusLabel.setForeground(playerTextColors[colorIdx]);
     }
 
     private int calculateNewPosition(int currentPos, int steps) {
@@ -459,26 +518,37 @@ public class SnakeDijkstraGUI extends JFrame {
     }
 
     private void updatePlayerGraphics() {
+        // Reset semua kotak
         for (GradientPanel panel : panelMap.values()) {
-            panel.setPlayerPresence(false, false);
+            panel.setPlayersHere(new ArrayList<>());
         }
-        int posP1 = p1Stack.peek();
-        int posP2 = p2Stack.peek();
 
-        GradientPanel p1Panel = panelMap.get(posP1);
-        GradientPanel p2Panel = panelMap.get(posP2);
+        // Kumpulkan posisi semua pemain
+        // Map: Posisi ID -> List of Player IDs yang ada disitu
+        Map<Integer, List<Integer>> positions = new HashMap<>();
 
-        if (p1Panel != null) {
-            boolean p2IsHere = (posP1 == posP2);
-            p1Panel.setPlayerPresence(true, p2IsHere);
+        for (int i = 0; i < playerCount; i++) {
+            int pId = i + 1;
+            int pos = allPlayerStacks.get(i).peek();
+
+            positions.putIfAbsent(pos, new ArrayList<>());
+            positions.get(pos).add(pId);
         }
-        if (p2Panel != null && posP1 != posP2) {
-            p2Panel.setPlayerPresence(false, true);
+
+        // Update Panel
+        for (Map.Entry<Integer, List<Integer>> entry : positions.entrySet()) {
+            int pos = entry.getKey();
+            List<Integer> players = entry.getValue();
+
+            GradientPanel panel = panelMap.get(pos);
+            if (panel != null) {
+                panel.setPlayersHere(players);
+            }
         }
     }
 
     private void updateInfoPanel() {
-        // Optional
+        // Optional refresh
     }
 
     public static void main(String[] args) {
