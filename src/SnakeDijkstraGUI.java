@@ -31,38 +31,63 @@ public class SnakeDijkstraGUI extends JFrame {
     }
 
     // ==========================================
-    // 2. HELPER FONT LOADER (BARU)
+    // 2. HELPER FONT LOADER
     // ==========================================
-    // Menyediakan akses global ke font Geist
     public static class AppFonts {
         public static Font REGULAR;
         public static Font BOLD;
         public static Font MONO;
 
         static {
-            REGULAR = loadFont("Geist-Regular.ttf", "Segoe UI", Font.PLAIN, 14f);
-            BOLD    = loadFont("Geist-Bold.ttf", "Segoe UI", Font.BOLD, 14f);
-            MONO    = loadFont("GeistMono-Regular.ttf", "Consolas", Font.PLAIN, 12f);
+            REGULAR = new Font("Segoe UI", Font.PLAIN, 14);
+            BOLD    = new Font("Segoe UI", Font.BOLD, 14);
+            MONO    = new Font("Consolas", Font.PLAIN, 12);
+
+            loadCustomFont("Geist-Regular.ttf", Font.PLAIN, 14f, "REGULAR");
+            loadCustomFont("Geist-Bold.ttf", Font.BOLD, 14f, "BOLD");
+            loadCustomFont("GeistMono-Regular.ttf", Font.PLAIN, 12f, "MONO");
         }
 
-        private static Font loadFont(String fileName, String fallbackName, int style, float size) {
+        private static void loadCustomFont(String fileName, int style, float size, String type) {
             try {
-                // Coba load dari file lokal (pastikan file ada di root project)
                 File fontFile = new File(fileName);
                 if (fontFile.exists()) {
-                    Font font = Font.createFont(Font.TRUETYPE_FONT, fontFile);
-                    return font.deriveFont(style, size);
+                    Font font = Font.createFont(Font.TRUETYPE_FONT, fontFile).deriveFont(style, size);
+                    if (type.equals("REGULAR")) REGULAR = font;
+                    else if (type.equals("BOLD")) BOLD = font;
+                    else if (type.equals("MONO")) MONO = font;
                 }
-            } catch (FontFormatException | IOException e) {
-                System.err.println("Gagal memuat font: " + fileName + ". Menggunakan fallback.");
+            } catch (Exception e) {
+                // Ignore
             }
-            // Fallback jika file tidak ada
-            return new Font(fallbackName, style, (int)size);
         }
     }
 
     // ==========================================
-    // 3. CLASS GRADIENT PANEL (Visual Kotak)
+    // 3. SOUND MANAGER
+    // ==========================================
+    public static class SoundManager {
+        public static void play(String filename) {
+            new Thread(() -> {
+                try {
+                    File soundFile = new File(filename);
+                    if (soundFile.exists()) {
+                        javax.sound.sampled.AudioInputStream audioIn = javax.sound.sampled.AudioSystem.getAudioInputStream(soundFile);
+                        javax.sound.sampled.Clip clip = javax.sound.sampled.AudioSystem.getClip();
+                        clip.open(audioIn);
+                        clip.start();
+                    } else {
+                        System.out.println("Info: File suara '" + filename + "' tidak ditemukan.");
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }).start();
+        }
+    }
+
+    // ==========================================
+    // 4. CLASS GRADIENT PANEL
     // ==========================================
     private static class GradientPanel extends JPanel {
         private final Color centerColor;
@@ -97,24 +122,23 @@ public class SnakeDijkstraGUI extends JFrame {
 
         public static Color getPlayerColor(int id) {
             switch (id) {
-                case 1: return Color.decode("#FF5252"); // Merah
-                case 2: return Color.decode("#448AFF"); // Biru
-                case 3: return Color.decode("#69F0AE"); // Hijau
-                case 4: return Color.decode("#FFAB40"); // Oranye
+                case 1: return Color.decode("#FF5252");
+                case 2: return Color.decode("#448AFF");
+                case 3: return Color.decode("#69F0AE");
+                case 4: return Color.decode("#FFAB40");
                 default: return Color.GRAY;
             }
         }
 
         public static void drawPawnStatic(Graphics2D g2, int x, int y, int size, Color color, String label) {
-            g2.setColor(new Color(0, 0, 0, 60)); // Shadow
+            g2.setColor(new Color(0, 0, 0, 60));
             g2.fillOval(x + 3, y + 3, size, size);
-            g2.setColor(color); // Body
+            g2.setColor(color);
             g2.fillOval(x, y, size, size);
-            g2.setColor(Color.WHITE); // Border
+            g2.setColor(Color.WHITE);
             g2.setStroke(new BasicStroke(2.5f));
             g2.drawOval(x, y, size, size);
 
-            // GANTI FONT PAWN KE GEIST BOLD
             g2.setFont(AppFonts.BOLD.deriveFont(11f));
             g2.setColor(Color.WHITE);
             FontMetrics fm = g2.getFontMetrics();
@@ -140,7 +164,6 @@ public class SnakeDijkstraGUI extends JFrame {
             g2d.setPaint(p);
             g2d.fillRect(0, 0, w, h);
 
-            // Point Indicator
             int ptSize = 20;
             int ptX = 5;
             int ptY = h - 25;
@@ -151,14 +174,12 @@ public class SnakeDijkstraGUI extends JFrame {
             g2d.drawOval(ptX, ptY, ptSize, ptSize);
             g2d.setColor(Color.BLACK);
 
-            // GANTI FONT POIN KE GEIST BOLD
             g2d.setFont(AppFonts.BOLD.deriveFont(10f));
 
             String ptStr = String.valueOf(pointValue);
             FontMetrics fm = g2d.getFontMetrics();
             g2d.drawString(ptStr, ptX + (ptSize - fm.stringWidth(ptStr))/2, ptY + (ptSize - fm.getHeight())/2 + fm.getAscent());
 
-            // Players
             int pawnSize = w / 3;
             int padding = 4;
             int x1 = (w / 2) - pawnSize - padding; int y1 = (h / 2) - pawnSize - padding + 10;
@@ -179,7 +200,7 @@ public class SnakeDijkstraGUI extends JFrame {
     }
 
     // ==========================================
-    // 4. MAIN GUI CLASS
+    // 5. MAIN GUI CLASS
     // ==========================================
 
     private static final int SIZE = 8;
@@ -220,7 +241,7 @@ public class SnakeDijkstraGUI extends JFrame {
     };
 
     public SnakeDijkstraGUI() {
-        setTitle("Snake Game: Geist Edition");
+        setTitle("Snake Game: High Win Rate Edition");
         setSize(1200, 900);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
@@ -251,18 +272,18 @@ public class SnakeDijkstraGUI extends JFrame {
         return 0;
     }
 
-    private ImageIcon createDiceImage(int value, int size) {
+    private ImageIcon createDiceImage(int value, int size, Color color) {
         BufferedImage img = new BufferedImage(size, size, BufferedImage.TYPE_INT_ARGB);
         Graphics2D g2 = img.createGraphics();
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
         g2.setColor(Color.WHITE);
         g2.fillRoundRect(2, 2, size-4, size-4, 15, 15);
-        g2.setColor(Color.BLACK);
-        g2.setStroke(new BasicStroke(2));
+
+        g2.setColor(color);
+        g2.setStroke(new BasicStroke(3));
         g2.drawRoundRect(2, 2, size-4, size-4, 15, 15);
 
-        g2.setColor(Color.BLACK);
         int dotSize = size / 5;
         int mid = size / 2;
         int left = size / 4;
@@ -376,7 +397,6 @@ public class SnakeDijkstraGUI extends JFrame {
             Color shadow = new Color(0,0,0, 80);
 
             g2.setStroke(new BasicStroke(5f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-            // Rails
             g2.setColor(shadow);
             g2.drawLine((int)(p1.x+px+2), (int)(p1.y+py+2), (int)(p2.x+px+2), (int)(p2.y+py+2));
             g2.drawLine((int)(p1.x-px+2), (int)(p1.y-py+2), (int)(p2.x-px+2), (int)(p2.y-py+2));
@@ -384,7 +404,6 @@ public class SnakeDijkstraGUI extends JFrame {
             g2.drawLine((int)(p1.x+px), (int)(p1.y+py), (int)(p2.x+px), (int)(p2.y+py));
             g2.drawLine((int)(p1.x-px), (int)(p1.y-py), (int)(p2.x-px), (int)(p2.y-py));
 
-            // Rungs
             g2.setStroke(new BasicStroke(4f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
             double stepSize = 25;
             for (double t = stepSize; t < distance - 10; t += stepSize) {
@@ -405,13 +424,12 @@ public class SnakeDijkstraGUI extends JFrame {
         JPanel panel = new JPanel(new GridBagLayout());
         panel.setBackground(sidebarColor);
 
-        // GANTI FONT MENU KE GEIST
         JLabel title = new JLabel("DICE MASTER SNAKE");
-        title.setFont(AppFonts.BOLD.deriveFont(48f)); // Geist Bold
+        title.setFont(AppFonts.BOLD.deriveFont(48f));
         title.setForeground(Color.WHITE);
 
         JLabel subtitle = new JLabel("<html><center>Shortcut: Tekan ENTER untuk Roll Dadu!</center></html>");
-        subtitle.setFont(AppFonts.REGULAR.deriveFont(18f)); // Geist Regular
+        subtitle.setFont(AppFonts.REGULAR.deriveFont(18f));
         subtitle.setForeground(Color.LIGHT_GRAY);
 
         JButton startButton = styleButton("START NEW GAME", new Color(46, 204, 113));
@@ -465,18 +483,17 @@ public class SnakeDijkstraGUI extends JFrame {
         sidePanel.setBorder(new EmptyBorder(30, 20, 30, 20));
         sidePanel.setBackground(sidebarColor);
 
-        // GANTI FONT SIDEBAR KE GEIST
         statusLabel = new JLabel("PLAYER 1 TURN");
         statusLabel.setFont(AppFonts.BOLD.deriveFont(24f));
         statusLabel.setForeground(playerTextColors[0]);
         statusLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
         scoresLabel = new JLabel("Scores: P1(0) P2(0)");
-        scoresLabel.setFont(AppFonts.MONO.deriveFont(14f)); // Geist Mono untuk angka
+        scoresLabel.setFont(AppFonts.MONO.deriveFont(14f));
         scoresLabel.setForeground(Color.ORANGE);
         scoresLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        diceImageLabel = new JLabel(createDiceImage(1, 80));
+        diceImageLabel = new JLabel(createDiceImage(1, 80, Color.BLACK));
         diceImageLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
         diceTextLabel = new JLabel("Press Enter to Roll");
@@ -493,7 +510,6 @@ public class SnakeDijkstraGUI extends JFrame {
 
         historyArea = new JTextArea(10, 1);
         historyArea.setEditable(false);
-        // Geist Mono untuk Log
         historyArea.setFont(AppFonts.MONO.deriveFont(12f));
         historyArea.setBackground(new Color(44, 62, 80));
         historyArea.setForeground(new Color(46, 204, 113));
@@ -526,7 +542,7 @@ public class SnakeDijkstraGUI extends JFrame {
 
     private JButton styleButton(String text, Color bgColor) {
         JButton btn = new JButton(text);
-        btn.setFont(AppFonts.BOLD.deriveFont(18f)); // Geist Bold Button
+        btn.setFont(AppFonts.BOLD.deriveFont(18f));
         btn.setBackground(bgColor);
         btn.setForeground(Color.WHITE);
         btn.setFocusPainted(false);
@@ -558,7 +574,7 @@ public class SnakeDijkstraGUI extends JFrame {
         statusLabel.setForeground(playerTextColors[0]);
         generateRandomLinks();
 
-        diceImageLabel.setIcon(createDiceImage(1, 80));
+        diceImageLabel.setIcon(createDiceImage(1, 80, Color.BLACK));
     }
 
     private void updateScoreLabel() {
@@ -572,9 +588,15 @@ public class SnakeDijkstraGUI extends JFrame {
     private void generateRandomLinks() {
         shortcuts.clear();
         while (shortcuts.size() < 5) {
-            int start = random.nextInt(62) + 2;
-            int end = random.nextInt(62) + 2;
-            if (start != end && !shortcuts.containsKey(start) && !shortcuts.containsValue(start)) {
+            int pos1 = random.nextInt(62) + 2;
+            int pos2 = random.nextInt(62) + 2;
+
+            if (pos1 == pos2) continue;
+
+            int start = Math.min(pos1, pos2);
+            int end = Math.max(pos1, pos2);
+
+            if (!shortcuts.containsKey(start) && !shortcuts.containsValue(start)) {
                 shortcuts.put(start, end);
             }
         }
@@ -610,7 +632,7 @@ public class SnakeDijkstraGUI extends JFrame {
                 cell.setBorder(new MatteBorder(1, 1, 1, 1, Color.WHITE));
 
                 JLabel numLabel = new JLabel(String.valueOf(node.id));
-                numLabel.setFont(AppFonts.BOLD.deriveFont(14f)); // Geist Bold untuk nomor kotak
+                numLabel.setFont(AppFonts.BOLD.deriveFont(14f));
                 numLabel.setForeground(new Color(80, 80, 80));
                 numLabel.setHorizontalAlignment(SwingConstants.RIGHT);
                 numLabel.setBorder(BorderFactory.createEmptyBorder(6, 0, 0, 8));
@@ -644,6 +666,8 @@ public class SnakeDijkstraGUI extends JFrame {
 
     private void playTurn() {
         if (turnQueue.isEmpty()) return;
+
+        SoundManager.play("dice.wav");
         rollButton.setEnabled(false);
 
         // --- ANIMASI ROLL DADU ---
@@ -652,7 +676,8 @@ public class SnakeDijkstraGUI extends JFrame {
 
         rollTimer.addActionListener(e -> {
             int randFace = random.nextInt(6) + 1;
-            diceImageLabel.setIcon(createDiceImage(randFace, 80));
+            // Saat animasi, dadu berwarna hitam (netral)
+            diceImageLabel.setIcon(createDiceImage(randFace, 80, Color.BLACK));
             rolls[0]++;
 
             if (rolls[0] >= 10) {
@@ -670,14 +695,21 @@ public class SnakeDijkstraGUI extends JFrame {
         boolean startIsPrime = isPrime(currentPos);
 
         double chance = random.nextDouble();
-        boolean isGreen = chance < 0.7;
+
+        // MODIFIKASI: Dadu Hijau (Maju) lebih sering muncul (90%)
+        // Dadu Merah (Mundur) hanya 10%
+        boolean isGreen = chance < 0.9;
+
         int diceValue = random.nextInt(6) + 1;
         int steps = isGreen ? diceValue : -diceValue;
 
-        diceImageLabel.setIcon(createDiceImage(diceValue, 80));
+        // --- UPDATE WARNA DADU BERDASARKAN HASIL ---
+        Color diceColor = isGreen ? new Color(0, 150, 0) : Color.RED;
+        diceImageLabel.setIcon(createDiceImage(diceValue, 80, diceColor));
+
         String direction = isGreen ? "MAJU (Hijau)" : "MUNDUR (Merah)";
         diceTextLabel.setText(direction + " " + diceValue + " Langkah");
-        diceTextLabel.setForeground(isGreen ? new Color(0, 128, 0) : Color.RED);
+        diceTextLabel.setForeground(diceColor);
 
         List<Integer> movementPath = generatePath(currentPos, steps);
 
@@ -711,6 +743,9 @@ public class SnakeDijkstraGUI extends JFrame {
 
             if (targetShortcutStart != -1 && finalDicePos == targetShortcutStart) {
                 jumpActivated = true;
+
+                SoundManager.play("magic.wav");
+
                 logMsg += " (OVERFLOW LINK -> " + targetShortcutEnd + ")";
                 JOptionPane.showMessageDialog(this, "PRIME OVERFLOW! Link Activated.");
             }
@@ -746,6 +781,8 @@ public class SnakeDijkstraGUI extends JFrame {
 
     private void animateMove(int playerId, int startId, int endId, Runnable onComplete) {
         if (startId == endId) { onComplete.run(); return; }
+
+        SoundManager.play("step.wav");
 
         GradientPanel startPanel = panelMap.get(startId);
         GradientPanel endPanel = panelMap.get(endId);
@@ -818,6 +855,9 @@ public class SnakeDijkstraGUI extends JFrame {
     }
 
     private void showEndGameDialog(int finisher) {
+        // PLAY AUDIO JOKOWI
+        SoundManager.play("hidup-jokowi.wav");
+
         List<Integer> rank = new ArrayList<>();
         for(int i=0; i<playerCount; i++) rank.add(i+1);
         rank.sort((p1, p2) -> Integer.compare(playerScores[p2-1], playerScores[p1-1]));
